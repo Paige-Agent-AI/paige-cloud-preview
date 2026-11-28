@@ -512,6 +512,32 @@ test("the versioned registry derives its actor from the session and validates in
   ]);
 });
 
+test("the developer capability reference is versioned, no-store, and session-gated", async () => {
+  const developerPath = "/api/cloud/v1/developer/capabilities";
+  for (const observation of [undefined, { releasesAvailable: false }, { releasesAvailable: true }]) {
+    const { handle, register, request } = fixture({ config: { workloadObservation: observation } });
+    const catalog = (method, token) => handle({ ...event(method, "", { token }), rawPath: developerPath });
+    assert.equal((await catalog("GET")).statusCode, 401);
+    await register(allowedEmails[0]);
+    assert.equal((await catalog("POST", tokens[0])).statusCode, 404);
+    const result = await catalog("GET", tokens[0]);
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.headers["cache-control"], "no-store");
+    const reference = JSON.parse(result.body);
+    assert.equal(reference.schema, "paige.cloud.developer-capabilities.v1");
+    assert.equal(reference.authentication, "cloud-account-session");
+    assert.deepEqual(Object.keys(reference).sort(), ["authentication", "operations", "schema"]);
+    assert.deepEqual(reference.operations.map(operation => operation.id), [
+      "registry.projects.list", "registry.applications.list", "repository.binding.read", "configuration.read",
+      ...(observation ? ["workload.inspection.read"] : []),
+      ...(observation?.releasesAvailable ? ["workload.releases.read"] : [])
+    ]);
+    assert.equal(reference.operations.find(row => row.id === "repository.binding.read").path.endsWith("/{environment}/repository-binding"), true);
+    assert.equal((await request("POST", "/sign-out", { token: tokens[0] })).statusCode, 204);
+    assert.equal((await catalog("GET", tokens[0])).statusCode, 401);
+  }
+});
+
 test("repository binding is a session-derived read for one registered environment", async () => {
   const reads = [];
   const binding = { repository: "example/source", repositoryId: "981547682137",
