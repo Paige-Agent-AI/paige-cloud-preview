@@ -112,3 +112,12 @@ test("repository binding is protected by the workspace account route", () => {
   assert.equal(request(governed, externalIps[0], route + "/revisions/1", "GET", "a.b.c").statusCode, 404);
   assert.equal(request(handler("marketing-public"), externalIps[0], route, "GET", "a.b.c").statusCode, 403);
 });
+
+test("developer discovery uses the protected account origin in route-governed mode", () => {
+  const path = "/api/cloud/v1/developer/capabilities";
+  const governed = handler("route-governed");
+  assert.equal(request(governed, externalIps[0], path).statusCode, 401);
+  assert.equal(request(governed, externalIps[0], path, "GET", "a.b.c").uri, path);
+  assert.equal(request(governed, externalIps[0], path, "POST", "a.b.c").statusCode, 404);
+  assert.equal(request(handler("marketing-public"), externalIps[0], path, "GET", "a.b.c").statusCode, 403);
+});

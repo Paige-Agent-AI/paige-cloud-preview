@@ -151,7 +151,8 @@ Resources:
             if (!hasSessionCookie(request)) return signinRedirect(request);
             return request;
           }
-          if (auth === 'account' || /^organizations(?:\/[a-fA-F0-9-]{36})?$/.test(auth) ||
+          if ((request.method === 'GET' && uri === '/api/cloud/v1/developer/capabilities') ||
+              auth === 'account' || /^organizations(?:\/[a-fA-F0-9-]{36})?$/.test(auth) ||
               registry.test(uri) || workload.test(uri)) {
             if (!hasSessionCookie(request)) return fault(401, 'Unauthorized', 'sign_in_required', request, true, '', '');
             return request;

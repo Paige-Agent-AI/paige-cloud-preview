@@ -23,6 +23,7 @@
       <a href="/mission-control#infrastructure" data-mission-route="infrastructure" hidden>Infrastructure</a>
       <a href="/mission-control#deployments" data-mission-route="deployments" hidden>Deployments</a>
       <a href="/mission-control#configuration" data-mission-route="configuration" hidden>Configuration</a>
+      <a href="/mission-control#developer" data-developer-link hidden>Developer Platform</a>
       <a href="/account">Account settings</a>
     </nav>
     <main class="account-workspace" id="account-main" tabindex="-1" data-workspace>
@@ -92,6 +93,14 @@
           <p role="status" data-project-status></p>
           <button class="plain-button" type="button" data-project-retry hidden>Retry projects</button>
           <ul class="project-list" data-projects></ul>
+        </section>
+        <section class="account-section" data-developer-reference aria-labelledby="developer-api-heading" hidden>
+          <h2 id="developer-api-heading">API reference</h2>
+          <p class="developer-intro">These endpoints use your Cloud account session. Each resource request checks its own project and environment permissions.</p>
+          <p role="status" data-developer-status></p>
+          <button class="plain-button" type="button" data-developer-retry hidden>Retry API reference</button>
+          <ul class="developer-operations" role="list" data-developer-operations></ul>
+          <p class="developer-intro">Find resource IDs in <a href="#projects">Projects</a> and serving releases in <a href="#deployments">Deployments</a>.</p>
         </section>
         <dl class="account-facts">
           <div><dt>Account number</dt><dd data-account-number></dd></div>

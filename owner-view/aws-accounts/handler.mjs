@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
+import { developerCapabilities, developerCapabilitiesPath } from "./developer-capabilities.mjs";
 
 const prefix = "/api/cloud/auth";
 const registryPath = /^\/api\/cloud\/v1\/organizations\/([a-fA-F0-9-]{36})\/projects(?:\/([a-z0-9][a-z0-9-]{0,47})\/applications)?$/;
@@ -285,6 +286,11 @@ export function createAccountHandler({ origin, evaluatorEmails, identity, record
     const provided = Buffer.from(event.headers?.["x-paige-cloud-edge"] ?? "");
     if (provided.length !== expectedKey.length || !timingSafeEqual(provided, expectedKey)) {
       throw new RequestError(403, "edge_required");
+    }
+    if (path === developerCapabilitiesPath) {
+      if (method !== "GET") throw new RequestError(404, "not_found");
+      await requireAccount(event);
+      return reply(200, developerCapabilities(workloadObservation));
     }
     if (method === "GET" && path === "/mission-control" && consoleHtml) {
       try {

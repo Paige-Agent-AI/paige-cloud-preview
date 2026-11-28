@@ -216,13 +216,66 @@ const missionViewsReady = missionHeading && getComputedStyle(workspace)
   .getPropertyValue("--mission-operating-views").trim() === "1";
 const releaseInventoryReady = missionViewsReady && getComputedStyle(workspace)
   .getPropertyValue("--mission-release-inventory").trim() === "1";
+const developerPage = find("[data-developer-reference]");
+const developerLink = find("[data-developer-link]");
+const developerStatus = find("[data-developer-status]");
+const developerOperations = find("[data-developer-operations]");
+const developerRetry = find("[data-developer-retry]");
+const developerReady = developerPage && developerLink && missionViewsReady && getComputedStyle(workspace)
+  .getPropertyValue("--mission-developer-reference").trim() === "1";
+let developerRevision = 0;
 const missionViews = {
   overview: ["Mission Control", ""],
   projects: ["Projects", ""],
   infrastructure: ["Infrastructure", "Open a project to inspect a registered workload. Health is checked on demand for its bound environment."],
   deployments: ["Deployments", "Open a project to check the serving release for a bound workload."],
-  configuration: ["Configuration", "Open an application environment to view its saved non-secret settings and check what the workload consumed."]
+  configuration: ["Configuration", "Open an application environment to view its saved non-secret settings and check what the workload consumed."],
+  ...(developerReady && { developer: ["Developer Platform", ""] })
 };
+
+async function loadDeveloperReference() {
+  const revision = ++developerRevision;
+  const current = () => !workspaceClosed && revision === developerRevision && !developerPage.hidden;
+  developerOperations.replaceChildren();
+  developerRetry.hidden = true;
+  developerStatus.textContent = "Loading API reference…";
+  try {
+    const result = await requestJson("/api/cloud/v1/developer/capabilities", "GET");
+    if (!current()) return;
+    if (result?.schema !== "paige.cloud.developer-capabilities.v1" || result.authentication !== "cloud-account-session" ||
+      !Array.isArray(result.operations) || !result.operations.every(operation => operation &&
+        [operation.name, operation.method, operation.path, operation.access].every(value => typeof value === "string"))) {
+      throw new Error("Invalid API reference");
+    }
+    developerStatus.textContent = result.operations.length ? "" : "No endpoints are available in this environment.";
+    developerOperations.replaceChildren(...result.operations.map(({ name, method, path, access }) => {
+      const item = document.createElement("li");
+      const label = document.createElement("strong");
+      const route = document.createElement("code");
+      const detail = document.createElement("p");
+      label.textContent = name;
+      route.textContent = `${method} ${path}`;
+      detail.textContent = access;
+      item.append(label, route, detail);
+      return item;
+    }));
+  } catch (error) {
+    if (error.status === 401 && !workspaceClosed) {
+      clearWorkspace();
+      location.replace("/sign-in");
+      return;
+    }
+    if (!current()) return;
+    developerStatus.textContent = "API reference is unavailable. Try again.";
+    developerRetry.hidden = false;
+  }
+}
+
+developerRetry?.addEventListener("click", () => {
+  developerStatus.tabIndex = -1;
+  developerStatus.focus();
+  void loadDeveloperReference();
+});
 
 function renderMissionRoute(moveFocus = false) {
   if (!missionViewsReady || workspaceClosed) return;
@@ -240,14 +293,24 @@ function renderMissionRoute(moveFocus = false) {
     if (view === link.dataset.missionRoute) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   }
-  if (moveFocus && view !== "projects") missionHeading.focus();
+  if (developerReady) {
+    developerPage.hidden = view !== "developer";
+    if (view === "developer") void loadDeveloperReference();
+    else {
+      developerRevision++;
+      developerOperations.replaceChildren();
+    }
+  }
+  if (moveFocus) missionHeading.focus();
 }
 
 function clearWorkspace() {
   if (!workspace) return;
   workspaceClosed = true;
   projectRevision++;
+  developerRevision++;
   projectList?.replaceChildren();
+  developerOperations?.replaceChildren();
   const scope = find("[data-mission-scope]");
   if (scope) {
     scope.hidden = true;
@@ -985,6 +1048,7 @@ async function showWorkspace() {
   find("[data-account-number]").textContent = account.number;
   find("[data-account-email]").textContent = account.email;
   renderOrganizations(account.organizations);
+  if (developerReady) developerLink.dataset.missionRoute = "developer";
   renderMissionRoute();
   if (missionViewsReady) {
     for (const link of document.querySelectorAll("[data-mission-route]:not([data-project-link])")) link.hidden = false;
