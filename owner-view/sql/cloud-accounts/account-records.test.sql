@@ -12,17 +12,20 @@ $$;
 RESET ROLE;
 
 DO $$
+DECLARE
+  operator_binding regprocedure := 'cloud_accounts.record_repository_binding_operation(uuid, uuid, uuid, text, text, text, uuid, uuid, text, text, text, text, text, text)'::regprocedure;
+  internal_configuration regprocedure := 'cloud_accounts.save_workload_configuration_revision(uuid, uuid, text, text, text, integer, text, integer, boolean)'::regprocedure;
 BEGIN
   IF EXISTS (
     SELECT 1
     FROM pg_proc AS proc
     JOIN pg_namespace AS schema ON schema.oid = proc.pronamespace
     WHERE schema.nspname = 'cloud_accounts'
-      AND (NOT proc.prosecdef
+      AND (proc.prosecdef <> (proc.oid <> operator_binding)
            OR NOT COALESCE('search_path=pg_catalog, pg_temp' = ANY(proc.proconfig), false)
            OR has_function_privilege('untrusted_account_test', proc.oid, 'EXECUTE')
            OR has_function_privilege('paige_cloud_account_runtime', proc.oid, 'EXECUTE') <>
-             (proc.oid <> 'cloud_accounts.save_workload_configuration_revision(uuid, uuid, text, text, text, integer, text, integer, boolean)'::regprocedure))
+             (proc.oid NOT IN (internal_configuration, operator_binding)))
   ) THEN
     RAISE EXCEPTION 'unexpected execution authority or function search path';
   END IF;
