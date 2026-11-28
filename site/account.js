@@ -217,10 +217,11 @@ const missionViewsReady = missionHeading && getComputedStyle(workspace)
 const releaseInventoryReady = missionViewsReady && getComputedStyle(workspace)
   .getPropertyValue("--mission-release-inventory").trim() === "1";
 const developerPage = find("[data-developer-reference]");
+const developerLink = find("[data-developer-link]");
 const developerStatus = find("[data-developer-status]");
 const developerOperations = find("[data-developer-operations]");
 const developerRetry = find("[data-developer-retry]");
-const developerReady = developerPage && missionViewsReady && getComputedStyle(workspace)
+const developerReady = developerPage && developerLink && missionViewsReady && getComputedStyle(workspace)
   .getPropertyValue("--mission-developer-reference").trim() === "1";
 let developerRevision = 0;
 const missionViews = {
@@ -1047,11 +1048,10 @@ async function showWorkspace() {
   find("[data-account-number]").textContent = account.number;
   find("[data-account-email]").textContent = account.email;
   renderOrganizations(account.organizations);
+  if (developerReady) developerLink.dataset.missionRoute = "developer";
   renderMissionRoute();
   if (missionViewsReady) {
-    for (const link of document.querySelectorAll("[data-mission-route]:not([data-project-link])")) {
-      link.hidden = link.dataset.missionRoute === "developer" && !developerReady;
-    }
+    for (const link of document.querySelectorAll("[data-mission-route]:not([data-project-link])")) link.hidden = false;
   }
   find("[data-account-content]").hidden = false;
   status.textContent = "";
